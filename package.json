@@ -1,0 +1,15 @@
+{
+    "name": "filedust",
+    "version": "1.0.0",
+    "description": "FileDust: A decentralized chunking, encryption, and storage tool",
+    "main": "FileDustUploader.js",
+    "type": "module",
+    "license": "PolyForm Noncommercial 1.0.0",
+    "dependencies": {
+        "@ardrive/turbo-sdk": "^1.39.2",
+        "arweave": "^1.15.7",
+        "axios": "^1.13.2",
+        "mime": "^4.1.0",
+        "p-limit": "^5.0.0"
+    }
+}
