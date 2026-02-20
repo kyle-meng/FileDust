@@ -1,3 +1,5 @@
+[ 中文 ](README.md) | [ English ](README_en.md)
+
 # 🌌 FileDust (星尘)
 
 > *"Where massive data turns into cosmic dust." - 当庞然巨物化作漫天星辰。*
