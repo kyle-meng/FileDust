@@ -3,8 +3,8 @@ import { writeFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 
 const DEFAULT_ALGO = 'aes-256-gcm';
-const KEY_LENGTH = 32;
-const SALT_LENGTH = 16;
+const KEY_LENGTH = 128;
+const SALT_LENGTH = 32;
 const IV_LENGTH = 12;
 const SCRYPT_COST = 16384;
 const SCRYPT_R = 8;
@@ -83,20 +83,23 @@ async function decrypt(cipherText, key, options = {}) {
   }
 }
 
-async function loadOrGenerateKey(password, keyFile = 'key_salt.json') {
+async function loadOrGenerateKey(password, keyFile = 'salt.json') {
   let key, salt;
 
   if (existsSync(keyFile)) {
+    console.log("读取 salt.json 文件...");
     const keyDataStr = await readFile(keyFile, 'utf8');
     const keyData = JSON.parse(keyDataStr);
-    key = Buffer.from(keyData.key, 'base64');
+    const result = await generateKeyFromPassword(password, keyData.salt);
+    key = result.key;
     salt = keyData.salt;
   } else {
     const result = await generateKeyFromPassword(password);
     key = result.key;
     salt = result.salt;
 
-    const keyData = { key: key.toString('base64'), salt: salt };
+    // const keyData = { key: key.toString('base64'), salt: salt };
+    const keyData = { salt: salt };
     await writeFile(keyFile, JSON.stringify(keyData, null, 2), 'utf8');
   }
   return { key, salt };

@@ -36,7 +36,7 @@ export const uploadToDust = async (filePath, password, chunkSizeKB = 90) => {
             const { bytesRead } = await fileHandle.read(buffer, 0, chunkSize, null);
             if (bytesRead === 0) break;
 
-            const actualChunk = buffer.subarray(0, bytesRead);
+            const actualChunk = Buffer.from(buffer.subarray(0, bytesRead));
             const currentPartNum = partNum;
             const chunkName = `${fileName}.part${String(currentPartNum).padStart(3, "0")}`;
 
