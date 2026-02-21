@@ -4,8 +4,11 @@ import Arweave from "arweave";
 import mime from "mime";
 import { TurboFactory, ArweaveSigner } from "@ardrive/turbo-sdk/node";
 
+// const gateway = "https://arweave.net";
+const gateway = "https://v1.filedust.workers.dev";
+
 const arweave = Arweave.init({
-    host: "arweave.net",
+    host: gateway,
     port: 443,
     protocol: "https",
 });
@@ -52,7 +55,7 @@ export async function uploadDataStream(data, filename) {
             },
         });
 
-        return "https://arweave.net/" + uploadResult.id;
+        return gateway + "/" + uploadResult.id;
     } catch (error) {
         throw new Error(`上传失败: ${error.message} (File: ${filename}, Size: ${dataSize})`);
     }

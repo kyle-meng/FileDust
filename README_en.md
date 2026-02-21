@@ -109,4 +109,10 @@ This project is strictly guarded by the **PolyForm Noncommercial License 1.0.0**
 - ✅ **Unconditionally Permitted**: Any personal geek use, code dissection & learning, technical exploration, and self-hosted non-commercial service building.
 - ❌ **Absolutely Prohibited**: Any corporate entity, startup team, or individual attempting to embed or disguise this engine's overall mechanism or core chunking logic into SaaS cloud drives, value-added modules, or to monetize it directly/indirectly for commercial gain.
 
+### ⚠️ Permanent Storage Disclaimer & Warning
+
+1. **On-Chain Immutability**: Based on the Arweave protocol, **all data scattered into the chain is permanent, irrevocable, and undeletable**. Think carefully about any content you upload, because once uploaded, not even the gods can wipe it from the network.
+2. **Abuse and Illegal Use Strictly Prohibited**: Although FileDust maximizes the micro-data free subsidies of L2 networks (like Turbo/Irys), essentially granting you "infinite space" secure storage, this tool is **developed solely for geek experiments, learning data sovereignty concepts, and personal non-infringing/legal asset backup**.
+3. **Legal Responsibility**: **It is strictly forbidden to use FileDust to process or distribute any data that violates the laws of your country/region (including but not limited to hacking materials, illegal transaction data, copyright infringement, etc.). The authors and contributors are not responsible for any data or legal consequences arising from the use of this tool, and provide no form of commercial warranty or customer service obligations.**
+
 Stay pure. Preserved only for the pioneers who passionately love geek culture.

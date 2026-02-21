@@ -126,8 +126,27 @@ app.get('/', (req, res) => {
         } catch (e) { }
     }
 
+    const formatSize = (bytes) => {
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+        else return (bytes / 1048576).toFixed(2) + ' MB';
+    };
+
     let listHtml = manifests.map(m => {
-        return `<a class="manifest-link" href="/view?m=${encodeURIComponent(m)}">📄 ${m}</a>`;
+        let sizeInfo = '';
+        try {
+            const manifestPath = path.resolve(process.cwd(), m);
+            if (fs.existsSync(manifestPath)) {
+                const content = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+                if (content.total_size) {
+                    const originalSize = formatSize(content.total_size);
+                    const dustSize = formatSize(fs.statSync(manifestPath).size);
+                    sizeInfo = `<span style="float: right; color: #94a3b8; font-size: 0.85em; margin-top: 3px;">Original Size: ${originalSize} | Dust Size: ${dustSize}</span>`;
+                }
+            }
+        } catch (e) { }
+
+        return `<a class="manifest-link" href="/view?m=${encodeURIComponent(m)}">📄 ${m} ${sizeInfo}</a>`;
     }).join('');
 
     if (manifests.length === 0) {
