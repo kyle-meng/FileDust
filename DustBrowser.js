@@ -20,6 +20,11 @@ const uploadFolder = multer({ dest: 'uploads/' });
 
 const manifestCache = new Map(); // key: filename, value: { manifest, chunkSize, chunkCache, pendingRequests }
 
+const CACHE_DIR = path.join(process.cwd(), 'cache');
+if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
+
 const calculateHash = (buffer) => crypto.createHash('md5').update(buffer).digest('hex');
 
 // ---- Chunk Fetcher with In-Memory Cache ----
@@ -52,17 +57,62 @@ async function getOrInitManifestInfo(manifestFilename) {
 
     // Define helper specifically for this manifest
     info.getDecryptedChunk = async (index) => {
+        // 1. Check ultra-fast in-memory cache
         if (info.chunkCache.has(index)) return info.chunkCache.get(index);
+
+        // 2. Check pending concurrent requests
         if (info.pendingRequests.has(index)) return info.pendingRequests.get(index);
 
         const chunkPromise = (async () => {
             const chunkInfo = info.manifest.chunks.find(c => c.part === index);
             if (!chunkInfo) throw new Error(`Chunk ${index} not found in manifest`);
 
-            console.log(`☁️  [${manifestFilename}] Fetching Chunk [${index}]...`);
+            // 3. Check durable disk cache
+            const diskCachePath = path.join(CACHE_DIR, `${manifest.filename}_chunk_${index}`);
+            if (fs.existsSync(diskCachePath)) {
+                console.log(`⚡ [${manifestFilename}] Loading Chunk [${index}] from local disk cache...`);
+                const decrypted = fs.readFileSync(diskCachePath);
 
-            // Timeout 30s
-            const response = await axios.get(chunkInfo.url, { responseType: 'arraybuffer', timeout: 30000 });
+                // Keep memory cache populated
+                if (info.chunkCache.size >= MAX_CACHE_SIZE) {
+                    const firstKey = info.chunkCache.keys().next().value;
+                    info.chunkCache.delete(firstKey);
+                }
+                info.chunkCache.set(index, decrypted);
+                info.pendingRequests.delete(index);
+                return decrypted;
+            }
+
+            console.log(`☁️  [${manifestFilename}] Fetching Chunk [${index}] from Arweave...`);
+
+            // Timeout 30s with Retry and Gateway Fallback
+            const retryFetch = async (url, retries = 5, delayMs = 1000) => {
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        return await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
+                    } catch (error) {
+                        const status = error.response ? error.response.status : 'Network Error';
+                        console.warn(`⚠️ [Chunk ${index}] Fetch failed ${i + 1}/${retries} (Status: ${status}): ${error.message}`);
+
+                        // Gateway Fallback Logic for 5xx errors or network timeouts
+                        if (!error.response || error.response.status >= 500) {
+                            if (url.includes('v1.filedust.workers.dev')) {
+                                url = url.replace('v1.filedust.workers.dev', 'arweave.net');
+                                console.log(`🔄 [Chunk ${index}] Switching gateway to: arweave.net`);
+                            } else if (url.includes('arweave.net')) {
+                                url = url.replace('arweave.net', 'arweave.dev');
+                                console.log(`🔄 [Chunk ${index}] Switching gateway to: arweave.dev`);
+                            }
+                        }
+
+                        if (i === retries - 1) throw error;
+                        const jitter = Math.random() * 1000;
+                        await new Promise(r => setTimeout(r, delayMs + jitter));
+                    }
+                }
+            };
+
+            const response = await retryFetch(chunkInfo.url);
             const netData = Buffer.from(response.data);
 
             // Hash Verification
@@ -73,7 +123,10 @@ async function getOrInitManifestInfo(manifestFilename) {
             // Decryption
             const decrypted = await decrypt(netData, encryptionKey, { autoJson: false });
 
-            // Maintain Cache Size
+            // 4. Save to durable disk cache
+            fs.writeFileSync(diskCachePath, decrypted);
+
+            // Maintain Memory Cache Size
             if (info.chunkCache.size >= MAX_CACHE_SIZE) {
                 const firstKey = info.chunkCache.keys().next().value;
                 info.chunkCache.delete(firstKey);

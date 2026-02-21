@@ -11,19 +11,54 @@ import { uploadDataStream } from "./ArweaveSDK.js";
 // 控制并发数，防 Irys/Turbo 封 IP
 const limit = pLimit(3);
 
+const calculateFileHash = (filePath) => {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash("sha256");
+        const stream = fs.createReadStream(filePath);
+        stream.on("data", (data) => hash.update(data));
+        stream.on("end", () => resolve(hash.digest("hex")));
+        stream.on("error", reject);
+    });
+};
+
 export const uploadToDust = async (filePath, password, chunkSizeKB = 90) => {
     const fileName = path.basename(filePath);
     const stats = fs.statSync(filePath);
     const fileSize = stats.size;
 
+    console.log(`🚀 开始处理文件: ${fileName} (${fileSize} bytes)`);
+    console.log(`⏱️  正在计算原始文件完整 Hash，请稍候...`);
+    const fileHash = await calculateFileHash(filePath);
+
     // 控制切片大小，保证加密后的密文不会超过 100KB (Arweave 免费线)
     const chunkSize = chunkSizeKB * 1024;
-    const manifest = { filename: fileName, total_size: fileSize, chunks: [] };
+    const manifestName = `${fileName}.dust`;
+    let manifest = { filename: fileName, total_size: fileSize, file_hash: fileHash, chunks: [] };
+
+    if (fs.existsSync(manifestName)) {
+        try {
+            const existingManifest = JSON.parse(fs.readFileSync(manifestName, "utf8"));
+            if (existingManifest.file_hash === fileHash) {
+                console.log(`♻️  发现匹配的星图文件，开启断点续传模式...`);
+                manifest = existingManifest;
+            } else {
+                console.warn(`⚠️  发现同名星图但原始文件校验不匹配，将覆盖并重新上传!`);
+            }
+        } catch (e) {
+            console.warn(`⚠️  读取已有星图文件失败，重新生成...`);
+        }
+    }
+
+    // 安全保存 Manifest 的辅助函数
+    const saveManifest = () => {
+        manifest.chunks.sort((a, b) => a.part - b.part);
+        fs.writeFileSync(manifestName, JSON.stringify(manifest, null, 4));
+    };
+
+    saveManifest(); // 初始化或更新进度文件
 
     // 加载或生成密钥
     const { key } = await loadOrGenerateKey(password);
-
-    console.log(`🚀 开始处理文件: ${fileName} (${fileSize} bytes)`);
 
     const fileHandle = await open(filePath, "r");
     const buffer = Buffer.alloc(chunkSize);
@@ -36,9 +71,18 @@ export const uploadToDust = async (filePath, password, chunkSizeKB = 90) => {
             const { bytesRead } = await fileHandle.read(buffer, 0, chunkSize, null);
             if (bytesRead === 0) break;
 
-            const actualChunk = Buffer.from(buffer.subarray(0, bytesRead));
             const currentPartNum = partNum;
             const chunkName = `${fileName}.part${String(currentPartNum).padStart(3, "0")}`;
+
+            // 检查是否已经存在于 manifest 中（断点续传）
+            const existingChunk = manifest.chunks.find((c) => c.part === currentPartNum);
+            if (existingChunk) {
+                console.log(`⏩ 跳过已完成分片 [${currentPartNum}] | URL: ${existingChunk.url}`);
+                partNum++;
+                continue;
+            }
+
+            const actualChunk = Buffer.from(buffer.subarray(0, bytesRead));
 
             // 将加密和提交流加入到并发队列中
             uploadTasks.push(
@@ -58,25 +102,25 @@ export const uploadToDust = async (filePath, password, chunkSizeKB = 90) => {
 
                     console.log(`✅ 分片 ${currentPartNum} 完成 | 大小: ${encryptedChunk.byteLength} 字节 | URL: ${downloadUrl}`);
 
-                    return { part: currentPartNum, name: chunkName, hash, url: downloadUrl };
+                    const chunkResult = { part: currentPartNum, name: chunkName, hash, url: downloadUrl };
+                    manifest.chunks.push(chunkResult);
+                    saveManifest(); // 边传边写，实时保存进度
+
+                    return chunkResult;
                 })
             );
 
             partNum++;
         }
 
-        // 等待所有分片并发上传完毕
-        const results = await Promise.all(uploadTasks);
-
-        // 排序并存入 manifest
-        manifest.chunks = results.sort((a, b) => a.part - b.part);
+        // 等待所有新增的分片并发上传完毕
+        await Promise.all(uploadTasks);
 
     } finally {
         await fileHandle.close();
     }
 
-    const manifestName = `${fileName}.dust`;
-    fs.writeFileSync(manifestName, JSON.stringify(manifest, null, 4));
+    saveManifest(); // 最终确认写入
     console.log(`🎉 全部完成！已生成 FileDust 星图文件: ${manifestName}，原文件可安心删除以节省空间！`);
     return manifestName;
 };
