@@ -60,6 +60,12 @@ async function makeItDust() {
 makeItDust();
 ```
 
+> 🚨 **【ABSOLUTELY CRITICAL SURVIVAL TIP】** 🚨
+> Take a look at your current directory—did a file named **`salt.json`** just appear?
+> Yes, due to our extremely rigorous encryption standards, your final master key is derived by combining **your Password + this 32-byte random Salt**.
+> This means the Salt **is not** exposed in or attached to the headers of the encrypted files stored on the public chain!
+> **You MUST store your "password", the "`.dust` star map file", AND the "`salt.json`" file securely together!** Lose your `salt.json`, and even the creator of the universe couldn't piece your data back together, even if you still remember your original password.
+
 ### 2. Reconstruct from Dust
 
 ```javascript
