@@ -16,6 +16,8 @@ At this point, you only need to keep a tiny `.dust` file (a few kilobytes) local
 
 - ✂️ **Nano-Precision Chunking**
   Applies a deliberately calculated `90KB` safety threshold by default. It gently slices any massive file into dimensions that perfectly fit the free-tier protocols without wasting a byte.
+- 🕰️ **Time-Space Version Travel (CDC Multi-Version Sync)**
+  Based on an ultra-fast Content-Defined Chunking algorithm implemented in pure JavaScript! It perfectly supports "incremental deduplication" across multiple versions. For a local modification of a gigabyte-sized file, you only need to upload a few changed fragments in a very short time to complete a brand new cloud mirror backup. Combined with its exclusive `.sync.dust` record table, it supports arbitrary rollback to reconstruct past historical era versions!
 - 🛡️ **Military-Grade E2E Invisibility (AES-256-GCM)**
   What enters the blockchain is pure data noise. Not even the gods can piece together or guess your content from the public ledger. By locally generating a high-strength password (Password) combined with a 32-byte random salt (Salt), it derives a 128-byte key, allowing you to rebuild the universe.
 - 🌊 **Black-Hole Memory Pipeline (Streaming Reconstruct)**
@@ -80,7 +82,29 @@ async function reconstruct() {
 reconstruct();
 ```
 
-### 3. Dust Browser
+### 3. Chronological Incremental Snapshot Backup (FileDust Sync)
+
+If you have large documents, game saves, databases, or Obsidian notes that need frequent modification, using the dedicated `FileDustSync` can unleash extreme "instant transmission" capabilities and a cross-space-time rollback mechanism:
+
+```javascript
+import { syncFileToDust, restoreFileSyncDust } from "./FileDustSync.js";
+
+async function timeTravel() {
+    // Create the v1 initial space-time snapshot
+    const manifestPath = await syncFileToDust("./my_work.docx", "YourPassword");
+    
+    // (A few days later) Suppose you only added two lines at the end of the document, backup again!
+    // 💥 The extremely furious CDC engine starts! The system instantly checks the history, and the previous parts directly reuse the old network fragments at zero cost!
+    // It creates a brand new v2 era snapshot in just a few seconds without wasting data traffic!
+    await syncFileToDust("./my_work.docx", "YourPassword");
+    
+    // Oh no, edited into a mess! Immediately start the time machine and pull the initial v1 version from the star map to the hard drive:
+    await restoreFileSyncDust(manifestPath, 1, "YourPassword");
+}
+timeTravel();
+```
+
+### 4. Dust Browser
 
 If your cosmic dust consists of **images**, **videos**, **audio**, or even **Text/Markdown**, you can skip downloading it entirely and spin up a local decentralized browser gateway:
 

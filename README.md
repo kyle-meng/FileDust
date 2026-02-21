@@ -16,6 +16,8 @@
 
 - ✂️ **纳米级精密切割 (Nano-Chunking)**
   默认应用 `90KB` 的深思熟虑防超发安全阀限，不浪费一丝冗余，将任何大文件轻柔切分降维。
+- 🕰️ **时空版本穿梭 (CDC Multi-Version Sync)**
+  基于纯 JavaScript 实现的超快 Content-Defined Chunking 算法！完美支持跨越多个版本进行「增量数据去重」(Deduplication)。对千兆大文件的局部修改，仅需极短时间上传寥寥变动碎片即可完成全新云端镜像备份。结合其专属的 `.sync.dust` 记录表，支持任意回溯重塑旧有时空历史纪元版本！
 - 🛡️ **军工级端到端隐身 (E2E AES-256-GCM)**
   上传入链的，皆是毫无规律的数据噪波，连上帝也无法在公有链上拼凑或猜透半分。由本地生成高强度的密码 (Password) 与长达 32 bytes 的随机盐 (Salt) 结合衍生出 128 bytes 密钥，让你能够重组宇宙。
 - 🌊 **黑洞级内存防波堤 (Streaming Reconstruct)**
@@ -80,7 +82,29 @@ async function reconstruct() {
 reconstruct();
 ```
 
-### 3. 星际流媒体浏览器 (Dust Browser)
+### 3. 时序增量快照备份 (FileDust Sync)
+
+如果你有需要频繁修改的大型文档、游戏存档、数据库或 Obsidian 笔记，使用专用的 `FileDustSync` 能够释放极致的“秒传”能力和跨时空回滚机制：
+
+```javascript
+import { syncFileToDust, restoreFileSyncDust } from "./FileDustSync.js";
+
+async function timeTravel() {
+    // 创建 v1 初始时空快照
+    const manifestPath = await syncFileToDust("./my_work.docx", "YourPassword");
+    
+    // (数天后) 假设你仅仅在文档末尾增加了两行字，再次备份！
+    // 💥 极为狂暴的 CDC 引擎启动！系统瞬间查明历史，前面部分直接零成本复用旧有网络碎片！
+    // 仅耗时几秒且不浪费流量即创建出全新的 v2 纪元快照！
+    await syncFileToDust("./my_work.docx", "YourPassword");
+    
+    // 天哪，改得一团糟！立刻启动时光机，从星图拉取最初始的 v1 版本到硬盘：
+    await restoreFileSyncDust(manifestPath, 1, "YourPassword");
+}
+timeTravel();
+```
+
+### 4. 星际流媒体浏览器 (Dust Browser)
 
 如果你的星尘是**图片**、**视频**、**音频**甚至是**文本/Markdown**文件，你可以免去完整下载，直接启动本地去中心化浏览器网关：
 
