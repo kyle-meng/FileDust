@@ -56,25 +56,33 @@ export const syncFileToDust = async (filePath, password, chunkSizeKB = 90) => {
     const chunker = new FastCDC(cdcConfig);
     const manifestName = `${fileName}.sync.dust`;
 
-    let manifest = { filename: fileName, versions: [] };
-    let previousChunksMap = new Map();
+    let manifest = { filename: fileName, pool: {}, versions: [] };
     let currentVersionIndex = -1;
 
     if (fs.existsSync(manifestName)) {
         try {
             const existingManifest = JSON.parse(fs.readFileSync(manifestName, "utf8"));
-            manifest = existingManifest;
-
+            manifest = { filename: fileName, pool: {}, versions: [], ...existingManifest };
+            if (!manifest.pool) manifest.pool = {};
             if (!manifest.versions) manifest.versions = [];
 
-            // 将所有历史版本的所有 chunk 放入一个哈希池中用于 CDC 大范围脱水！
+            // 向前兼容：把老版本格式升维到 pool 全局去重字典结构
             for (const ver of manifest.versions) {
                 if (ver.chunks && ver.chunks.length > 0) {
-                    for (const chunk of ver.chunks) {
-                        if (chunk.plain_hash) {
-                            previousChunksMap.set(chunk.plain_hash, chunk);
+                    const newChunks = [];
+                    for (let i = 0; i < ver.chunks.length; i++) {
+                        const chunk = ver.chunks[i];
+                        if (typeof chunk === 'object' && chunk !== null && chunk.plain_hash) {
+                            manifest.pool[chunk.plain_hash] = {
+                                hash: chunk.hash,
+                                url: chunk.url
+                            };
+                            newChunks[chunk.part !== undefined ? chunk.part : i] = chunk.plain_hash;
+                        } else if (typeof chunk === 'string') {
+                            newChunks[i] = chunk;
                         }
                     }
+                    ver.chunks = newChunks;
                 }
             }
 
@@ -113,7 +121,6 @@ export const syncFileToDust = async (filePath, password, chunkSizeKB = 90) => {
     }
 
     const saveManifest = () => {
-        manifest.versions[currentVersionIndex].chunks.sort((a, b) => a.part - b.part);
         fs.writeFileSync(manifestName, JSON.stringify(manifest, null, 4));
     };
     saveManifest();
@@ -143,8 +150,8 @@ export const syncFileToDust = async (filePath, password, chunkSizeKB = 90) => {
             const chunkName = `${fileName}.v${manifest.versions.length}.part${String(currentPartNum).padStart(3, "0")}`;
 
             // 1. 断点续传逻辑
-            const existingChunk = currentVersionChunks.find((c) => c.part === currentPartNum);
-            if (existingChunk) {
+            const existingPlainHash = currentVersionChunks[currentPartNum];
+            if (existingPlainHash && manifest.pool[existingPlainHash]) {
                 console.log(`📚 [Sync] ⏩ [断点续传] 跳过本版本已成功上传的碎片片段 [${currentPartNum}] (CDC片段大小: ${chunkLen} bytes)`);
                 partNum++;
                 continue;
@@ -152,18 +159,10 @@ export const syncFileToDust = async (filePath, password, chunkSizeKB = 90) => {
 
             // 2. 跨版本增量秒传逻辑 (CDC)
             const plainHash = crypto.createHash("md5").update(actualChunk).digest("hex");
-            if (previousChunksMap.has(plainHash)) {
-                const matchedOldChunk = previousChunksMap.get(plainHash);
+            if (manifest.pool[plainHash]) {
                 console.log(`📚 [Sync] ⚡ [CDC 跨版本数据去重] 发现历史版本内容，零消耗复用云端片段！(本地片段: v${manifest.versions.length}-part${currentPartNum} | 大小: ${chunkLen} bytes)`);
 
-                const chunkResult = {
-                    part: currentPartNum,
-                    name: chunkName,
-                    hash: matchedOldChunk.hash,
-                    plain_hash: plainHash,
-                    url: matchedOldChunk.url,
-                };
-                currentVersionChunks.push(chunkResult);
+                currentVersionChunks[currentPartNum] = plainHash;
                 saveManifest();
                 partNum++;
                 continue;
@@ -179,20 +178,17 @@ export const syncFileToDust = async (filePath, password, chunkSizeKB = 90) => {
 
                     console.log(`📚 [Sync] ✅ 【全新上传】v${manifest.versions.length} 分片 ${currentPartNum} 成功 | 尺寸: ${chunkLen} | URL: ${downloadUrl}`);
 
-                    const chunkResult = {
-                        part: currentPartNum,
-                        name: chunkName,
+                    // 加入全局哈希特征池 (Pool)
+                    manifest.pool[plainHash] = {
                         hash,
-                        plain_hash: plainHash,
                         url: downloadUrl,
                     };
-                    currentVersionChunks.push(chunkResult);
 
-                    // 将新上传的分片也马上加入到哈希池（如果在当前文件里就有自复制段落，也能复用！）
-                    previousChunksMap.set(plainHash, chunkResult);
+                    // 将新上传的分片指针记录到当前版本的序列中
+                    currentVersionChunks[currentPartNum] = plainHash;
                     saveManifest();
 
-                    return chunkResult;
+                    return plainHash;
                 })
             );
             partNum++;
@@ -244,13 +240,18 @@ export const restoreFileSyncDust = async (manifestPath, targetVersion, password)
     console.log(`\n⏳ [Sync Restore] 开始从去中心化网络中恢复历史版本: ${filename} (快照版本号: v${versionToRestore.version})，目标体积: ${versionToRestore.total_size}`);
 
     const chunks = versionToRestore.chunks;
+    const pool = manifest.pool || {};
     const downloadedBuffers = [];
     let downloadedSize = 0;
 
-    const downloadTasks = chunks.map((chunkInfo) => {
+    const downloadTasks = chunks.map((plainHash, index) => {
+        if (!plainHash || !pool[plainHash]) return Promise.resolve();
+
         return downloadLimit(async () => {
+            const chunkInfo = pool[plainHash];
+            const partNum = index;
             const url = chunkInfo.url;
-            console.log(`📡 [Sync Restore] 正在提取区块资源 [v${versionToRestore.version}_Part ${chunkInfo.part}]...`);
+            console.log(`📡 [Sync Restore] 正在提取区块资源 [v${versionToRestore.version}_Part ${partNum}]...`);
 
             const buf = await retry(async () => {
                 const response = await axios.get(url, { responseType: "arraybuffer", timeout: 10000 });
@@ -260,23 +261,21 @@ export const restoreFileSyncDust = async (manifestPath, targetVersion, password)
             // 校验提取的密文哈希
             const currentHash = crypto.createHash("md5").update(buf).digest("hex");
             if (currentHash !== chunkInfo.hash) {
-                console.warn(`⚠️  警告：提取回来的区块 [Part ${chunkInfo.part}] 似乎在网络中遭遇破损 (HASH 不一致)`);
+                console.warn(`⚠️  警告：提取回来的区块 [Part ${partNum}] 似乎在网络中遭遇破损 (HASH 不一致)`);
             }
 
             // 解密
             const decryptedChunk = await decrypt(buf, key, { autoJson: false });
 
-            // 校验解密哈希
-            if (chunkInfo.plain_hash) {
-                const currentPlainHash = crypto.createHash("md5").update(decryptedChunk).digest("hex");
-                if (currentPlainHash !== chunkInfo.plain_hash) {
-                    throw new Error(`[Sync Restore] 致命错误：解密还原后原文 Hash 未命中原始 CDC 指纹记录，此快照节点存在内容篡改！(Part ${chunkInfo.part})`);
-                }
+            // 校验解密明文哈希
+            const currentPlainHash = crypto.createHash("md5").update(decryptedChunk).digest("hex");
+            if (currentPlainHash !== plainHash) {
+                throw new Error(`[Sync Restore] 致命错误：解密还原后原文 Hash 未命中原始 CDC 指纹记录，此快照节点存在内容篡改！(Part ${partNum})`);
             }
 
             downloadedSize += decryptedChunk.byteLength;
-            console.log(`✅ [Sync Restore] 解密并还原区块 [Part ${chunkInfo.part}] 成功. (${downloadedSize}/${versionToRestore.total_size})`);
-            downloadedBuffers[chunkInfo.part] = decryptedChunk;
+            console.log(`✅ [Sync Restore] 解密并还原区块 [Part ${partNum}] 成功. (${downloadedSize}/${versionToRestore.total_size})`);
+            downloadedBuffers[partNum] = decryptedChunk;
         });
     });
 
