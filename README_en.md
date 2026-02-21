@@ -17,11 +17,13 @@ At this point, you only need to keep a tiny `manifest.json` file (a few kilobyte
 - ✂️ **Nano-Precision Chunking**
   Applies a deliberately calculated `90KB` safety threshold by default. It gently slices any massive file into dimensions that perfectly fit the free-tier protocols without wasting a byte.
 - 🛡️ **Military-Grade E2E Invisibility (AES-256-GCM)**
-  What enters the blockchain is pure data noise. Not even the gods can piece together or guess your content from the public ledger. Only you, holding the local Password and random Salt, can rebuild the universe.
+  What enters the blockchain is pure data noise. Not even the gods can piece together or guess your content from the public ledger. By locally generating a high-strength password (Password) combined with a 32-byte random salt (Salt), it derives a 128-byte key, allowing you to rebuild the universe.
 - 🌊 **Black-Hole Memory Pipeline (Streaming Reconstruct)**
   A uniquely minimalist pipeline design: `Download one block -> decrypt instantly -> append atomically -> release`. Even when reconstructing a 10GB epic video, Node.js remains absolutely stable, with memory spikes no larger than a mere `2MB`.
 - 🚦 **Anti-Ban Camouflage Engine (Ratelimit & Jittering)**
   Built-in `p-limit` concurrent throttling combined with bottom-layer retry backpressure and random Jitter. It interacts gently and with restraint with free-tier nodes (like Irys/Bundlr) to avoid triggering DDoS firewalls and subsequent IP bans.
+- 📺 **Star Dust Media Streaming (Dust Browser)**
+  An embedded Express local server acts as a frontend rendering proxy. It achieves a true "download-while-watching" streaming experience with multi-instance support and drag-to-seek caching directly from the decentralized chain. Pictures open instantly, videos stream smoothly, elevating the reconstruction experience to cloud-drive standards!
 
 ---
 
@@ -71,6 +73,32 @@ async function reconstruct() {
 }
 reconstruct();
 ```
+
+### 3. Dust Browser
+
+If your cosmic dust consists of **images**, **videos**, **audio**, or even **Text/Markdown**, you can skip downloading it entirely and spin up a local decentralized browser gateway:
+
+```bash
+# Start your local proxy
+node DustBrowser.js <Your_Reconstruction_Password>
+```
+
+👉 **Once running, visit:** `http://localhost:3000`
+The page will mount and render all `*.manifest.json` star maps found in the current directory. Simply click to initiate a multi-threaded "download on the fly, decrypt on the fly, preview on the fly" experience!
+
+**🌟 Feature Previews:**
+
+* **🌌 Star Map Index Listing:**
+  <br><img src="./pic/DustBrowser.png" width="800">
+
+* **🎬 Video Dust Streaming (Native Memory Pool Buffering):**
+  <br><img src="./pic/DustBrowserMP4test.png" width="800">
+
+* **🖼️ Instant Image Rendering:**
+  <br><img src="./pic/DustBrowsertestpng.png" width="800">
+
+* **📝 Text & Markdown Cross-Layer Reading:**
+  <br><img src="./pic/DustBrowserreadme.png" width="800">
 
 ---
 

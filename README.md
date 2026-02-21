@@ -17,11 +17,13 @@
 - ✂️ **纳米级精密切割 (Nano-Chunking)**
   默认应用 `90KB` 的深思熟虑防超发安全阀限，不浪费一丝冗余，将任何大文件轻柔切分降维。
 - 🛡️ **军工级端到端隐身 (E2E AES-256-GCM)**
-  上传入链的，皆是毫无规律的数据噪波，连上帝也无法在公有链上拼凑或猜透半分。唯有在本地掌握密码 (Password) 与随机盐 (Salt) 的你能够重组宇宙。
+  上传入链的，皆是毫无规律的数据噪波，连上帝也无法在公有链上拼凑或猜透半分。由本地生成高强度的密码 (Password) 与长达 32 bytes 的随机盐 (Salt) 结合衍生出 128 bytes 密钥，让你能够重组宇宙。
 - 🌊 **黑洞级内存防波堤 (Streaming Reconstruct)**
   独有的极简「下载一个块 -> 瞬时解密 -> 原子追加 -> 释放」的流式管道设计。哪怕重组 10GB 史诗视频，Node.js 依然安诺如山，内存增压不超过区区 `2MB`。
 - 🚦 **反封锁防伪装引擎 (Ratelimit & Jittering)**
   内建 `p-limit` 并发软锁芯，自带底层重试异常背压与随机休眠抖动（Jitter），温柔而克制地与底层免费节点（如 Irys/Bundlr）交互，避免触发防 DDoS 洗礼墙导致 IP 禁杀。
+- 📺 **星际流媒体播放 (Dust Browser)**
+  内置 Express 本地服务器代理前端渲染，真正实现从去中心化链上「边下边看」的流媒体多开和拖拽缓存体验。图片秒看，视频畅连，重构无感体验提升至云盘级水准！
 
 ---
 
@@ -71,6 +73,32 @@ async function reconstruct() {
 }
 reconstruct();
 ```
+
+### 3. 星际流媒体浏览器 (Dust Browser)
+
+如果你的星尘是**图片**、**视频**、**音频**甚至是**文本/Markdown**文件，你可以免去完整下载，直接启动本地去中心化浏览器网关：
+
+```bash
+# 启动本地代理
+node DustBrowser.js <你的重组密码>
+```
+
+👉 **运行后访问:** `http://localhost:3000`
+页面将挂载并渲染当前目录下所有的 `*.manifest.json` 星图，点击即可实现多路并行的「边下、边解密、边预览」效果！
+
+**🌟 效果预览：**
+
+* **🌌 星图索引列表页：**
+  <br><img src="./pic/DustBrowser.png" width="800">
+
+* **🎬 视频流星尘边下边播 (原生内存池调度缓冲)：**
+  <br><img src="./pic/DustBrowserMP4test.png" width="800">
+
+* **🖼️ 图像星尘瞬时渲染：**
+  <br><img src="./pic/DustBrowsertestpng.png" width="800">
+
+* **📝 文本与 Markdown 星尘穿层阅读：**
+  <br><img src="./pic/DustBrowserreadme.png" width="800">
 
 ---
 

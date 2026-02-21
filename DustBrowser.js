@@ -188,6 +188,8 @@ app.get('/view', async (req, res) => {
             mediaTag = `<video src="${streamUrl}" controls style="max-width: 100%; max-height: 60vh; border-radius: 8px;" autoplay></video>`;
         } else if (mimeType.startsWith('audio/')) {
             mediaTag = `<audio src="${streamUrl}" controls autoplay></audio>`;
+        } else if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') {
+            mediaTag = `<iframe src="${streamUrl}" style="width: 100%; height: 60vh; border: none; border-radius: 8px; background: #fff;"></iframe>`;
         }
 
         res.send(`
