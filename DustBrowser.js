@@ -5,13 +5,18 @@ import path from 'node:path';
 import axios from 'axios';
 import crypto from 'node:crypto';
 import mime from 'mime';
+import multer from 'multer';
 import { loadOrGenerateKey, decrypt } from './CryptoUtils.js';
+import { uploadToDust } from './FileDustUploader.js';
 
 // ---- Configuration ----
 const PORT = 3000;
 const MAX_CACHE_SIZE = 50; // Cache 50 chunks (approx 4.5MB) to handle fast seeking / range overlapping
 
 let encryptionKey = null;
+let globalPassword = null;
+
+const uploadFolder = multer({ dest: 'uploads/' });
 
 const manifestCache = new Map(); // key: filename, value: { manifest, chunkSize, chunkCache, pendingRequests }
 
@@ -103,16 +108,30 @@ async function getOrInitManifestInfo(manifestFilename) {
 const app = express();
 
 app.get('/', (req, res) => {
-    // List all .manifest.json in current directory
-    const files = fs.readdirSync(process.cwd());
-    const manifests = files.filter(f => f.endsWith('.manifest.json'));
+    // List all .dust / .manifest.json in current directory and dusts directory
+    const manifests = [];
+
+    try {
+        const cwdFiles = fs.readdirSync(process.cwd());
+        const cwdDusts = cwdFiles.filter(f => f.endsWith('.dust') || f.endsWith('.manifest.json'));
+        manifests.push(...cwdDusts);
+    } catch (e) { }
+
+    const dustsDir = path.join(process.cwd(), 'dusts');
+    if (fs.existsSync(dustsDir)) {
+        try {
+            const dFiles = fs.readdirSync(dustsDir);
+            const dDusts = dFiles.filter(f => f.endsWith('.dust') || f.endsWith('.manifest.json'));
+            manifests.push(...dDusts.map(f => `dusts/${f}`));
+        } catch (e) { }
+    }
 
     let listHtml = manifests.map(m => {
         return `<a class="manifest-link" href="/view?m=${encodeURIComponent(m)}">📄 ${m}</a>`;
     }).join('');
 
     if (manifests.length === 0) {
-        listHtml = `<p>No .manifest.json files found in the current directory.</p>`;
+        listHtml = `<p>No .dust files found.</p>`;
     }
 
     res.send(`
@@ -140,6 +159,7 @@ app.get('/', (req, res) => {
                    background: #1e293b; 
                    border-radius: 16px; 
                    box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+                   margin-bottom: 20px;
                }
                .title { font-size: 1.8rem; font-weight: 600; margin-bottom: 20px; }
                .manifest-link {
@@ -156,17 +176,112 @@ app.get('/', (req, res) => {
                .manifest-link:hover {
                    background: #475569;
                }
+               .upload-box {
+                   background: #334155;
+                   padding: 20px;
+                   border-radius: 8px;
+                   margin-top: 20px;
+               }
+               input[type="file"] { margin-bottom: 10px; }
+               button {
+                   background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;
+               }
+               button:hover { background: #2563eb; }
+               #upload-status { margin-top: 10px; font-size: 0.9em; color: #a3e635; }
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="title">🌌 Star Dust Browser</div>
-                <p>Select a manifest file to explore:</p>
-                ${listHtml}
+                
+                <div class="upload-box">
+                    <h3>📤 Put new file into Star Dust</h3>
+                    <form id="uploadForm">
+                        <input type="file" id="fileInput" required /><br />
+                        <button type="submit">Upload & Encrypt</button>
+                    </form>
+                    <div id="upload-status"></div>
+                </div>
+
+                <p style="margin-top: 30px;">Select a manifest/dust file to explore:</p>
+                <div id="file-list">
+                    ${listHtml}
+                </div>
             </div>
+
+            <script>
+                document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const fileInput = document.getElementById('fileInput');
+                    const statusDiv = document.getElementById('upload-status');
+                    
+                    if (!fileInput.files.length) return;
+                    
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    
+                    statusDiv.textContent = "Uploading and Encrypting (this may take a while)...";
+                    statusDiv.style.color = "#94a3b8";
+
+                    try {
+                        const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        
+                        if (response.ok) {
+                            statusDiv.textContent = "✅ Upload completed! Generated: " + result.manifestName;
+                            statusDiv.style.color = "#a3e635";
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            throw new Error(result.error);
+                        }
+                    } catch (err) {
+                        statusDiv.textContent = "❌ Upload failed: " + err.message;
+                        statusDiv.style.color = "#ef4444";
+                    }
+                });
+            </script>
         </body>
         </html>
     `);
+});
+
+app.post('/api/upload', uploadFolder.single('file'), async (req, res) => {
+    try {
+        if (!req.file) throw new Error("No file uploaded");
+
+        const originalName = req.file.originalname;
+        const tempPath = path.join('uploads', originalName);
+
+        // Rename multer's temp file to original name inside uploads/
+        fs.renameSync(req.file.path, tempPath);
+
+        console.log(`\n☁️  Starting upload task for ${originalName}`);
+
+        // Call the engine's upload function
+        const generatedManifest = await uploadToDust(tempPath, globalPassword, 90);
+
+        // Move the generated .dust to dusts/ directory
+        const dustsDir = path.join(process.cwd(), 'dusts');
+        if (!fs.existsSync(dustsDir)) {
+            fs.mkdirSync(dustsDir, { recursive: true });
+        }
+
+        const finalManifestPath = path.join(dustsDir, generatedManifest);
+        fs.renameSync(generatedManifest, finalManifestPath);
+
+        // Clean up the original local file after successful upload to save space
+        if (fs.existsSync(tempPath)) {
+            fs.unlinkSync(tempPath);
+        }
+
+        res.json({ success: true, manifestName: `dusts/${generatedManifest}` });
+    } catch (err) {
+        console.error("Upload error:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get('/view', async (req, res) => {
@@ -175,6 +290,8 @@ app.get('/view', async (req, res) => {
 
     try {
         const info = await getOrInitManifestInfo(m);
+        // Strip both `.enc` and `.dust` or `.manifest.json` correctly if needed,
+        // although info.manifest.filename is usually the original file name + .enc or similar
         const filename = info.manifest.filename.replace(/\.enc$/, '');
         const mimeType = mime.getType(filename) || 'application/octet-stream';
 
@@ -253,8 +370,8 @@ app.get('/view', async (req, res) => {
                     </div>
                 </div>
             </body>
-            </html>
-        `);
+            </html >
+            `);
     } catch (e) {
         res.status(500).send("Error loading manifest: " + e.message);
     }
@@ -274,7 +391,7 @@ app.get('/stream', async (req, res) => {
 
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        res.setHeader('Content-Disposition', `inline; filename = "${filename}"`);
 
         let start = 0;
         let end = totalSize - 1;
@@ -286,7 +403,7 @@ app.get('/stream', async (req, res) => {
             end = Math.min(requestedEnd, end);
 
             res.status(206);
-            res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`);
+            res.setHeader('Content-Range', `bytes ${start} -${end}/${totalSize}`);
             res.setHeader('Content-Length', end - start + 1);
         } else {
             res.status(200);
@@ -342,6 +459,7 @@ if (args.length < 1) {
 
 loadOrGenerateKey(args[0]).then(({ key }) => {
     encryptionKey = key;
+    globalPassword = args[0]; // Save it for async uploader calls
     app.listen(PORT, () => {
         console.log(`\n=================================================`);
         console.log(`🚀 Dust Browser is proudly serving your manifests!`);

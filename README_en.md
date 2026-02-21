@@ -8,7 +8,7 @@
 
 Its core philosophy: Disintegrate your massive files (like gigabyte-sized videos or models) into precise, tiny fragments under `100KB` (Dust). After securing them with military-grade AES-256-GCM local encryption, FileDust scatters these fragments into the Arweave/Irys deep web using concurrency throttling. This elegantly capitalizes on the L2 protocol's underlying subsidies for micro-data uploads.
 
-At this point, you only need to keep a tiny `manifest.json` file (a few kilobytes) locally, unlocking vast amounts of physical storage space. When you need to reconstruct the data, using your unique password, all fragments will stream back from the decentralized cosmic cloud, strictly verify their integrity, decrypt on-the-fly, and perfectly reconstruct the original massive file!
+At this point, you only need to keep a tiny `.dust` file (a few kilobytes) locally, unlocking vast amounts of physical storage space. When you need to reconstruct the data, using your unique password, all fragments will stream back from the decentralized cosmic cloud, strictly verify their integrity, decrypt on-the-fly, and perfectly reconstruct the original massive file!
 
 ---
 
@@ -66,8 +66,8 @@ makeItDust();
 import { downloadFromDust } from "./FileDustMerger.js";
 
 async function reconstruct() {
-    // Feed it the feather-light .manifest.json coordinates, and the galaxy will flow in reverse to rebuild it.
-    await downloadFromDust("./videos/secret_movie.mp4.manifest.json", "SuperStrongPassword123!");
+    // Feed it the feather-light .dust coordinates, and the galaxy will flow in reverse to rebuild it.
+    await downloadFromDust("./videos/secret_movie.mp4.dust", "SuperStrongPassword123!");
     
     // 🎉 Your secret_movie.mp4 descends intact into the current directory.
 }
@@ -84,7 +84,7 @@ node DustBrowser.js <Your_Reconstruction_Password>
 ```
 
 👉 **Once running, visit:** `http://localhost:3000`
-The page will mount and render all `*.manifest.json` star maps found in the current directory. Simply click to initiate a multi-threaded "download on the fly, decrypt on the fly, preview on the fly" experience!
+The page will mount and render all `*.dust` star maps found in the current directory. Simply click to initiate a multi-threaded "download on the fly, decrypt on the fly, preview on the fly" experience! It also provides a minimalist upload and chunking interface.
 
 **🌟 Feature Previews:**
 

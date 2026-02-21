@@ -8,7 +8,7 @@
 
 它的核心哲学是：将你的巨型文件（如视频、模型集）化整为零，精准切割为不超过 `100KB` 的微小碎片（Dust），经过军工级本地 AES-256GCM 加密颠覆后，利用并发限流技术抛洒入 Arweave/Irys 去中心化深网（从而极其优雅地利用 L2 免费微型数据阈值的底层红利）。
 
-此时，你在本地只需以极低容量保留一张几千字节的「星图索引」（`.manifest.json`），便完成了一场华丽的本地物理空间释放。当需要重构数据时，凭你的唯一密码指令，所有碎片便会从漫天星云中流式汇聚、严格校验、瞬时解密，最终复刻重装出原本的庞然大物！
+此时，你在本地只需以极低容量保留一张几千字节的「星图文件」（`.dust`），便完成了一场华丽的本地物理空间释放。当需要重构数据时，凭你的唯一密码指令，所有碎片便会从漫天星云中流式汇聚、严格校验、瞬时解密，最终复刻重装出原本的庞然大物！
 
 ---
 
@@ -66,8 +66,8 @@ makeItDust();
 import { downloadFromDust } from "./FileDustMerger.js";
 
 async function reconstruct() {
-    // 喂给它那轻如鸿毛的 .manifest.json 坐标，星河自会倒流重组
-    await downloadFromDust("./videos/secret_movie.mp4.manifest.json", "SuperStrongPassword123!");
+    // 喂给它那轻如鸿毛的 .dust 坐标，星河自会倒流重组
+    await downloadFromDust("./videos/secret_movie.mp4.dust", "SuperStrongPassword123!");
     
     // 🎉 你的 secret_movie.mp4 毫发无伤地降临在当前目录
 }
@@ -84,7 +84,7 @@ node DustBrowser.js <你的重组密码>
 ```
 
 👉 **运行后访问:** `http://localhost:3000`
-页面将挂载并渲染当前目录下所有的 `*.manifest.json` 星图，点击即可实现多路并行的「边下、边解密、边预览」效果！
+页面将挂载并渲染当前目录下所有的 `*.dust` 星图，点击即可实现多路并行的「边下、边解密、边预览」效果！且内置了便捷的一键上传与自动切片工具。
 
 **🌟 效果预览：**
 

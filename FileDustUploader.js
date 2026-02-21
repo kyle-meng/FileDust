@@ -75,9 +75,9 @@ export const uploadToDust = async (filePath, password, chunkSizeKB = 90) => {
         await fileHandle.close();
     }
 
-    const manifestName = `${fileName}.manifest.json`;
+    const manifestName = `${fileName}.dust`;
     fs.writeFileSync(manifestName, JSON.stringify(manifest, null, 4));
-    console.log(`🎉 全部完成！Manifest已生成: ${manifestName}，原文件可安心删除以节省空间！`);
+    console.log(`🎉 全部完成！已生成 FileDust 星图文件: ${manifestName}，原文件可安心删除以节省空间！`);
     return manifestName;
 };
 
