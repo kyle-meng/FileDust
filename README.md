@@ -96,6 +96,8 @@ node DustBrowser.js <你的重组密码>
 
 * **🖼️ 图像星尘瞬时渲染：**
   <br><img src="./pic/DustBrowsertestpng.png" width="800">
+  <br><img src="./pic/DustBrowsertestpng2.png" width="800">
+
 
 * **📝 文本与 Markdown 星尘穿层阅读：**
   <br><img src="./pic/DustBrowserreadme.png" width="800">

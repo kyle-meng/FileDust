@@ -96,6 +96,7 @@ The page will mount and render all `*.dust` star maps found in the current direc
 
 * **🖼️ Instant Image Rendering:**
   <br><img src="./pic/DustBrowsertestpng.png" width="800">
+  <br><img src="./pic/DustBrowsertestpng2.png" width="800">
 
 * **📝 Text & Markdown Cross-Layer Reading:**
   <br><img src="./pic/DustBrowserreadme.png" width="800">
